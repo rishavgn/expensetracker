@@ -279,7 +279,6 @@
 //     </div>
 //   );
 // }
-
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -291,7 +290,9 @@ function App() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [selectedCat, setSelectedCat] = useState(null);
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'detail'
   const [newCat, setNewCat] = useState({ name: '', icon: '', limit: '' });
+  const [showAddCatForm, setShowAddCatForm] = useState(false);
 
   useEffect(() => {
     if (token) fetchUser();
@@ -317,6 +318,7 @@ function App() {
       setAmount('');
       setNote('');
       setSelectedCat(null);
+      setViewMode('grid');
     } catch (err) {
       console.error(err);
     }
@@ -328,6 +330,7 @@ function App() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNewCat({ name: '', icon: '', limit: '' });
+      setShowAddCatForm(false);
       fetchUser();
     } catch (err) {
       console.error(err);
@@ -344,119 +347,109 @@ function App() {
         <h5 className="m-0">Hello, {user.email}</h5>
       </div>
 
-      {/* Category Grid */}
-      <div className="row g-3 justify-content-center">
-        {user.categories.map(cat => {
-          const spent = cat.expenses.reduce((sum, e) => sum + e.amount, 0);
-          const left = cat.limit - spent;
-          const percent = (spent / cat.limit) * 100;
+      {/* Grid View */}
+      {viewMode === 'grid' && (
+        <>
+          {/* Category Grid */}
+          <div className="row g-3 justify-content-center">
+            {user.categories.map(cat => {
+              const spent = cat.expenses.reduce((sum, e) => sum + e.amount, 0);
+              const left = cat.limit - spent;
+              const percent = (spent / cat.limit) * 100;
 
-          return (
-            <div className="col-5 col-sm-4 col-md-3" key={cat._id}>
+              return (
+                <div className="col-5 col-sm-4 col-md-3" key={cat._id}>
+                  <div
+                    className="card text-center"
+                    style={{
+                      backgroundColor: '#d3eafd',
+                      cursor: 'pointer',
+                      borderRadius: '15px',
+                      minHeight: '100px'
+                    }}
+                    onClick={() => {
+                      setSelectedCat(cat);
+                      setViewMode('detail');
+                    }}
+                  >
+                    <div className="card-body d-flex flex-column justify-content-center">
+                      <h6 className="card-title">{cat.icon} {cat.name}</h6>
+                      <p className="card-text">Left: ₹{left}</p>
+                      {percent >= 100 && <div className="text-danger small">Over budget</div>}
+                      {percent >= 80 && percent < 100 && <div className="text-warning small">80% used</div>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Add Category */}
+            <div className="col-5 col-sm-4 col-md-3">
               <div
                 className="card text-center"
                 style={{
-                  backgroundColor: '#d3eafd',
+                  backgroundColor: '#ffcbe0',
                   cursor: 'pointer',
-                  borderRadius: '15px'
+                  borderRadius: '15px',
+                  minHeight: '100px'
                 }}
-                onClick={() => setSelectedCat(cat)}
+                onClick={() => setShowAddCatForm(!showAddCatForm)}
               >
-                <div className="card-body">
-                  <h5 className="card-title">{cat.icon} {cat.name}</h5>
-                  <p className="card-text">Left: ₹{left}</p>
-                  {percent >= 100 && <div className="text-danger">Budget Exceeded!</div>}
-                  {percent >= 80 && percent < 100 && <div className="text-warning">80% used</div>}
+                <div className="card-body d-flex align-items-center justify-content-center">
+                  <h6 className="card-title mb-0">+ Add Category</h6>
                 </div>
               </div>
             </div>
-          );
-        })}
-
-        {/* Add Category Button */}
-        <div className="col-5 col-sm-4 col-md-3">
-          <div
-            className="card text-center"
-            style={{
-              backgroundColor: '#ffcbe0',
-              cursor: 'pointer',
-              borderRadius: '15px'
-            }}
-            data-bs-toggle="collapse"
-            data-bs-target="#addCatForm"
-          >
-            <div className="card-body">
-              <h5 className="card-title">+ Add Category</h5>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Category Form */}
-      <div id="addCatForm" className="collapse mt-4">
-        <div className="card card-body border border-primary">
-          <h5 className="mb-3">Add New Category</h5>
-          <div className="row g-2">
-            <div className="col-4">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Name"
-                value={newCat.name}
-                onChange={e => setNewCat({ ...newCat, name: e.target.value })}
-              />
-            </div>
-            <div className="col-4">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Icon (e.g. ✈️)"
-                value={newCat.icon}
-                onChange={e => setNewCat({ ...newCat, icon: e.target.value })}
-              />
-            </div>
-            <div className="col-4">
-              <input
-                type="number"
-                className="form-control"
-                placeholder="Limit"
-                value={newCat.limit}
-                onChange={e => setNewCat({ ...newCat, limit: e.target.value })}
-              />
-            </div>
-          </div>
-          <button className="btn btn-primary mt-3 w-100" onClick={addCategory}>Add Category</button>
-        </div>
-      </div>
-
-      {/* Expense Modal */}
-      {selectedCat && (
-        <div className="position-fixed bottom-0 start-0 end-0 bg-light p-3 border-top" style={{ zIndex: 1000 }}>
-          <h5 className="text-center mb-3">{selectedCat.name} Expenses</h5>
-
-          <div className="mb-2">
-            <input
-              type="number"
-              className="form-control mb-2"
-              placeholder="Amount"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-            />
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Note"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-            />
-            <div className="d-grid gap-2">
-              <button className="btn btn-success" onClick={addExpense}>Save</button>
-              <button className="btn btn-secondary" onClick={() => setSelectedCat(null)}>Close</button>
-            </div>
           </div>
 
-          {/* Expenses Table */}
-          <table className="table table-bordered table-sm mt-3">
+          {/* Add Category Form */}
+          {showAddCatForm && (
+            <div className="card card-body mt-4">
+              <h5 className="mb-3">Add New Category</h5>
+              <div className="row g-2">
+                <div className="col-4">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Name"
+                    value={newCat.name}
+                    onChange={e => setNewCat({ ...newCat, name: e.target.value })}
+                  />
+                </div>
+                <div className="col-4">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Icon (e.g. ✈️)"
+                    value={newCat.icon}
+                    onChange={e => setNewCat({ ...newCat, icon: e.target.value })}
+                  />
+                </div>
+                <div className="col-4">
+                  <input
+                    type="number"
+                    className="form-control"
+                    placeholder="Limit"
+                    value={newCat.limit}
+                    onChange={e => setNewCat({ ...newCat, limit: e.target.value })}
+                  />
+                </div>
+              </div>
+              <button className="btn btn-primary mt-3 w-100" onClick={addCategory}>Add Category</button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Category Detail View */}
+      {viewMode === 'detail' && selectedCat && (
+        <div className="card card-body" style={{ minHeight: '100vh', backgroundColor: '#d3eafd' }}>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5>{selectedCat.icon} {selectedCat.name}</h5>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setViewMode('grid')}>← Back</button>
+          </div>
+
+          <table className="table table-bordered table-sm bg-white">
             <thead>
               <tr>
                 <th>Note</th>
@@ -474,13 +467,34 @@ function App() {
               ))}
             </tbody>
           </table>
+
+          <div className="mt-3">
+            <input
+              type="number"
+              className="form-control mb-2"
+              placeholder="Amount"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+            />
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Note"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+            />
+            <div className="d-grid gap-2">
+              <button className="btn btn-success" onClick={addExpense}>Save Expense</button>
+              <button className="btn btn-secondary" onClick={() => setViewMode('grid')}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// --- Login Component ---
+// Login Component same as before
 function Login({ setToken }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
