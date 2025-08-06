@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-const API = 'https://your-backend-url/api';
+const API = 'https://expensetracker-zm3t.onrender.com/api';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
