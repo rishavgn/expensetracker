@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API = 'https://your-backend-url/api'; // Replace with your actual backend URL
+const API = 'https://expensetracker-zm3t.onrender.com/api'; // Replace with your actual backend URL
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
