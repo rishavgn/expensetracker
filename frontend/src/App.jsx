@@ -279,254 +279,176 @@
 //     </div>
 //   );
 // }
-import { useState, useEffect } from 'react';
+// App.js
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const API = 'https://expensetracker-zm3t.onrender.com/api';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [user, setUser] = useState(null);
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
+  const [category, setCategory] = useState({ name: '', limit: '', icon: '' });
   const [selectedCat, setSelectedCat] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'detail'
-  const [newCat, setNewCat] = useState({ name: '', icon: '', limit: '' });
-  const [showAddCatForm, setShowAddCatForm] = useState(false);
+  const [expense, setExpense] = useState({ amount: '', note: '' });
+  const [viewMode, setViewMode] = useState('grid');
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editCatData, setEditCatData] = useState({ name: '', icon: '', limit: '' });
 
   useEffect(() => {
     if (token) fetchUser();
   }, [token]);
 
   async function fetchUser() {
-    try {
-      const res = await axios.get(`${API}/user`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUser(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await axios.get(`${API}/user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setUser(res.data);
   }
 
-  async function addExpense() {
-    try {
-      await axios.post(`${API}/expense/${selectedCat._id}`, { amount, note }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchUser();
-      setAmount('');
-      setNote('');
-      setSelectedCat(null);
-      setViewMode('grid');
-    } catch (err) {
-      console.error(err);
-    }
+  async function login() {
+    const res = await axios.post(`${API}/login`, { email, password });
+    localStorage.setItem('token', res.data.token);
+    setToken(res.data.token);
+  }
+
+  async function register() {
+    await axios.post(`${API}/register`, { email, password });
+    login();
   }
 
   async function addCategory() {
-    try {
-      await axios.post(`${API}/category`, newCat, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNewCat({ name: '', icon: '', limit: '' });
-      setShowAddCatForm(false);
-      fetchUser();
-    } catch (err) {
-      console.error(err);
-    }
+    await axios.post(
+      `${API}/category`,
+      category,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setCategory({ name: '', limit: '', icon: '' });
+    fetchUser();
   }
 
-  if (!token) return <Login setToken={setToken} />;
-  if (!user) return <div className="text-center mt-5">Loading...</div>;
+  async function addExpense() {
+    await axios.post(
+      `${API}/expense/${selectedCat._id}`,
+      expense,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setExpense({ amount: '', note: '' });
+    fetchUser();
+    setViewMode('grid');
+  }
+
+  async function deleteCategory(id) {
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
+    await axios.delete(`${API}/category/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    fetchUser();
+  }
+
+  async function updateCategory(id) {
+    await axios.put(`${API}/category/${id}`, editCatData, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setEditingCatId(null);
+    setEditCatData({ name: '', icon: '', limit: '' });
+    fetchUser();
+  }
+
+  if (!token)
+    return (
+      <div className="container p-4">
+        <h2 className="mb-3">Login</h2>
+        <input type="email" placeholder="Email" className="form-control mb-2" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input type="password" placeholder="Password" className="form-control mb-2" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <button className="btn btn-primary me-2" onClick={login}>Login</button>
+        <button className="btn btn-secondary" onClick={register}>Register</button>
+      </div>
+    );
 
   return (
-    <div className="container-fluid p-3" style={{ fontFamily: 'sans-serif' }}>
-      {/* Header */}
-      <div className="bg-pink text-center py-3 mb-4" style={{ backgroundColor: '#f8c3e0' }}>
-        <h5 className="m-0">Hello, {user.email}</h5>
-      </div>
-
-      {/* Grid View */}
+    <div className="container py-4">
       {viewMode === 'grid' && (
         <>
-          {/* Category Grid */}
-          <div className="row g-3 justify-content-center">
-            {user.categories.map(cat => {
-              const spent = cat.expenses.reduce((sum, e) => sum + e.amount, 0);
-              const left = cat.limit - spent;
-              const percent = (spent / cat.limit) * 100;
-
-              return (
-                <div className="col-5 col-sm-4 col-md-3" key={cat._id}>
+          <h4 className="mb-3">Your Categories</h4>
+          <div className="row g-3 mb-4">
+            {user?.categories?.map((cat) => (
+              <div className="col-6 col-sm-4 col-md-3" key={cat._id}>
+                <div
+                  className="card text-center position-relative"
+                  style={{ backgroundColor: '#d3eafd', borderRadius: '15px', minHeight: '110px' }}
+                >
                   <div
-                    className="card text-center"
-                    style={{
-                      backgroundColor: '#d3eafd',
-                      cursor: 'pointer',
-                      borderRadius: '15px',
-                      minHeight: '100px'
-                    }}
+                    className="card-body d-flex flex-column justify-content-center"
                     onClick={() => {
                       setSelectedCat(cat);
                       setViewMode('detail');
                     }}
+                    style={{ cursor: 'pointer' }}
                   >
-                    <div className="card-body d-flex flex-column justify-content-center">
-                      <h6 className="card-title">{cat.icon} {cat.name}</h6>
-                      <p className="card-text">Left: ₹{left}</p>
-                      {percent >= 100 && <div className="text-danger small">Over budget</div>}
-                      {percent >= 80 && percent < 100 && <div className="text-warning small">80% used</div>}
-                    </div>
+                    <h6 className="card-title">{cat.icon} {cat.name}</h6>
+                    <p className="card-text">Left: ₹{cat.limit - cat.expenses.reduce((sum, e) => sum + e.amount, 0)}</p>
+                  </div>
+                  <div className="position-absolute top-0 end-0 mt-1 me-2">
+                    <button className="btn btn-sm btn-outline-dark me-1" onClick={(e) => { e.stopPropagation(); setEditingCatId(cat._id); setEditCatData({ name: cat.name, icon: cat.icon, limit: cat.limit }); }}>✏️</button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={(e) => { e.stopPropagation(); deleteCategory(cat._id); }}>🗑️</button>
                   </div>
                 </div>
-              );
-            })}
-
-            {/* Add Category */}
-            <div className="col-5 col-sm-4 col-md-3">
-              <div
-                className="card text-center"
-                style={{
-                  backgroundColor: '#ffcbe0',
-                  cursor: 'pointer',
-                  borderRadius: '15px',
-                  minHeight: '100px'
-                }}
-                onClick={() => setShowAddCatForm(!showAddCatForm)}
-              >
-                <div className="card-body d-flex align-items-center justify-content-center">
-                  <h6 className="card-title mb-0">+ Add Category</h6>
-                </div>
+                {editingCatId === cat._id && (
+                  <div className="card card-body mt-2 p-2">
+                    <input type="text" className="form-control mb-1" placeholder="Name" value={editCatData.name} onChange={e => setEditCatData({ ...editCatData, name: e.target.value })} />
+                    <input type="text" className="form-control mb-1" placeholder="Icon" value={editCatData.icon} onChange={e => setEditCatData({ ...editCatData, icon: e.target.value })} />
+                    <input type="number" className="form-control mb-2" placeholder="Limit" value={editCatData.limit} onChange={e => setEditCatData({ ...editCatData, limit: e.target.value })} />
+                    <div className="d-flex justify-content-between">
+                      <button className="btn btn-success btn-sm" onClick={() => updateCategory(cat._id)}>Save</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingCatId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
           </div>
 
-          {/* Add Category Form */}
-          {showAddCatForm && (
-            <div className="card card-body mt-4">
-              <h5 className="mb-3">Add New Category</h5>
-              <div className="row g-2">
-                <div className="col-4">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Name"
-                    value={newCat.name}
-                    onChange={e => setNewCat({ ...newCat, name: e.target.value })}
-                  />
-                </div>
-                <div className="col-4">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Icon (e.g. ✈️)"
-                    value={newCat.icon}
-                    onChange={e => setNewCat({ ...newCat, icon: e.target.value })}
-                  />
-                </div>
-                <div className="col-4">
-                  <input
-                    type="number"
-                    className="form-control"
-                    placeholder="Limit"
-                    value={newCat.limit}
-                    onChange={e => setNewCat({ ...newCat, limit: e.target.value })}
-                  />
-                </div>
-              </div>
-              <button className="btn btn-primary mt-3 w-100" onClick={addCategory}>Add Category</button>
+          <h5 className="mb-2">Add Category</h5>
+          <div className="row g-2 mb-4">
+            <div className="col">
+              <input type="text" className="form-control" placeholder="Name" value={category.name} onChange={(e) => setCategory({ ...category, name: e.target.value })} />
             </div>
-          )}
+            <div className="col">
+              <input type="text" className="form-control" placeholder="Icon" value={category.icon} onChange={(e) => setCategory({ ...category, icon: e.target.value })} />
+            </div>
+            <div className="col">
+              <input type="number" className="form-control" placeholder="Limit" value={category.limit} onChange={(e) => setCategory({ ...category, limit: e.target.value })} />
+            </div>
+            <div className="col-auto">
+              <button className="btn btn-primary" onClick={addCategory}>Add</button>
+            </div>
+          </div>
         </>
       )}
 
-      {/* Category Detail View */}
       {viewMode === 'detail' && selectedCat && (
-        <div className="card card-body" style={{ minHeight: '100vh', backgroundColor: '#d3eafd' }}>
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5>{selectedCat.icon} {selectedCat.name}</h5>
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => setViewMode('grid')}>← Back</button>
+        <>
+          <h4 className="mb-3">{selectedCat.icon} {selectedCat.name}</h4>
+          <ul className="list-group mb-3">
+            {selectedCat.expenses.map((e, i) => (
+              <li className="list-group-item d-flex justify-content-between" key={i}>
+                <span>{e.note}</span>
+                <span>₹{e.amount}</span>
+              </li>
+            ))}
+          </ul>
+          <input type="number" className="form-control mb-2" placeholder="Amount" value={expense.amount} onChange={(e) => setExpense({ ...expense, amount: e.target.value })} />
+          <input type="text" className="form-control mb-3" placeholder="Note" value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.target.value })} />
+          <div className="d-flex justify-content-between">
+            <button className="btn btn-success" onClick={addExpense}>Save</button>
+            <button className="btn btn-secondary" onClick={() => setViewMode('grid')}>Cancel</button>
           </div>
-
-          <table className="table table-bordered table-sm bg-white">
-            <thead>
-              <tr>
-                <th>Note</th>
-                <th>Amount</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedCat.expenses.map((e, idx) => (
-                <tr key={idx}>
-                  <td>{e.note}</td>
-                  <td>₹{e.amount}</td>
-                  <td>{new Date(e.date).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="mt-3">
-            <input
-              type="number"
-              className="form-control mb-2"
-              placeholder="Amount"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-            />
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Note"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-            />
-            <div className="d-grid gap-2">
-              <button className="btn btn-success" onClick={addExpense}>Save Expense</button>
-              <button className="btn btn-secondary" onClick={() => setViewMode('grid')}>Cancel</button>
-            </div>
-          </div>
-        </div>
+        </>
       )}
-    </div>
-  );
-}
-
-// Login Component same as before
-function Login({ setToken }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  async function login() {
-    try {
-      const res = await axios.post(`${API}/login`, { email, password });
-      localStorage.setItem('token', res.data.token);
-      setToken(res.data.token);
-    } catch (err) {
-      alert('Login failed');
-    }
-  }
-
-  return (
-    <div className="container mt-5" style={{ maxWidth: '400px' }}>
-      <h4 className="mb-3 text-center">Login</h4>
-      <input
-        type="email"
-        className="form-control mb-2"
-        placeholder="Email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        className="form-control mb-2"
-        placeholder="Password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-      />
-      <button className="btn btn-primary w-100" onClick={login}>Login</button>
     </div>
   );
 }

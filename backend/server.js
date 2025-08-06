@@ -45,6 +45,22 @@ app.post('/api/category', authMiddleware, async (req, res) => {
   await user.save();
   res.json(user.categories);
 });
+app.delete('/api/category/:categoryId', authMiddleware, async (req, res) => {
+  const user = await User.findById(req.userId);
+  user.categories.id(req.params.categoryId).remove();
+  await user.save();
+  res.json({ success: true, categories: user.categories });
+});
+app.put('/api/category/:categoryId', authMiddleware, async (req, res) => {
+  const { name, limit, icon } = req.body;
+  const user = await User.findById(req.userId);
+  const category = user.categories.id(req.params.categoryId);
+  if (name !== undefined) category.name = name;
+  if (limit !== undefined) category.limit = limit;
+  if (icon !== undefined) category.icon = icon;
+  await user.save();
+  res.json({ success: true, category });
+});
 
 app.post('/api/expense/:categoryId', authMiddleware, async (req, res) => {
   const { amount, note } = req.body;
